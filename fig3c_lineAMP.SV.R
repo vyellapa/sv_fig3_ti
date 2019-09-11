@@ -387,7 +387,7 @@ q = ggplot(cnv.df,aes(start,n,color=type))+geom_line()+facet_grid(.~order,scales
   coord_cartesian(ylim=c(-40,70)) #+geom_rect(data=hotspots, aes(xmin=start,xmax=stop,ymin=-40,ymax=70))#+geom_point(data=hotspots1,shape=8,color="#303030",size=2)
 
 
-####### Plot SV  ############
+####### Plot SV & CNV ############
 
 q = ggplot(cnv.df1,aes(start,count,color=type))+geom_line()+facet_grid(.~order,scales = "free_x",space="free", switch ="both")+ 
   theme_bw(base_size = 22)+
@@ -407,7 +407,50 @@ q = ggplot(cnv.df1,aes(start,count,color=type))+geom_line()+facet_grid(.~order,s
   xlab("")+ylab("Frequency")+
   coord_cartesian(ylim=c(-40,70))
 
+####### Plot SV alone ############
+svplot = sv.plot
+svplot$type = "SV"
+sss = ggplot(svplot,aes(start,count,color=type))+geom_line()+facet_grid(.~order,scales = "free_x",space="free")+ 
+  theme_bw(base_size = 22)+
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), 
+        legend.position="right", strip.background  = element_blank(), 
+        legend.title = element_blank(),
+        axis.ticks = element_line(size = 0), 
+        panel.grid.major = element_blank(), 
+        panel.spacing = unit(0.0005, "lines"),
+        panel.border = element_rect(size = 0.5, colour = "#666666", fill = NA),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank())+
+  scale_color_manual(values=c("forestgreen","dodgerblue"))+
+  scale_fill_manual(values=c("#007B22"))+
+  theme(legend.title=element_blank(),plot.margin = unit(c(0,0,0,0.1), "lines"))+
+  xlab("")+ylab("Frequency")+
+  coord_cartesian(ylim=c(0,70))
 
+####### Plot CNV alone ############
+amplot = amp.plot %>% filter(chrom!="Y") 
+pad = (sv.plot.app) %>% mutate(type="AMP")
+amplot = rbind(amplot,pad)
+amplot$type="AM"
+amplot$order = factor(amplot$chrom, levels=c('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','X'))
+aaa = ggplot(amplot,aes(start,count*-1,color=type))+geom_line()+facet_grid(.~order,scales = "free_x",space="free", switch ="both")+ 
+  theme_bw(base_size = 22)+
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), 
+        legend.position="right", strip.background  = element_blank(), 
+        legend.title = element_blank(),
+        axis.ticks = element_line(size = 0), 
+        panel.grid.major = element_blank(), 
+        panel.spacing = unit(0.0005, "lines"),
+        panel.border = element_rect(size = 0.5, colour = "#666666", fill = NA),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank())+
+  scale_color_manual(values=c("dodgerblue","forestgreen"))+
+  scale_fill_manual(values=c("#007B22"))+
+  theme(legend.title=element_blank(),plot.margin = unit(c(0,0,0,0.1), "lines"))+
+  xlab("")+ylab("Frequency")+
+  coord_cartesian(ylim=c(0,70))
 
 ####### Plot Rainfall  ############
 r = ggplot(df.sv.idist,aes(pos1,log10(dist+1), color=factor(X9)))+geom_point(alpha=0.9,size=0.4)+facet_grid(.~order,scales = "free_x",space="free")+ 
@@ -433,8 +476,8 @@ r = ggplot(df.sv.idist,aes(pos1,log10(dist+1), color=factor(X9)))+geom_point(alp
 
 ##### Arrange and print pdf #####
 pdf("~/Desktop/SV_fig_ti.pdf", width = 20, height = 9, useDingbats=FALSE)
-#gridExtra::grid.arrange(HS,peaks,q,ncol=1, nrow=3, heights=c(0.25,0.55,2), padding = unit(0.0001, "line"))
-q
+gridExtra::grid.arrange(sss,aaa,ncol=1, nrow=2, heights=c(1,1), padding = unit(0.0001, "line"))
+
 dev.off()
 
 
