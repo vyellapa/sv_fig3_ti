@@ -4,7 +4,14 @@ library(IRanges)
 library("GenomicRanges")
 library(dplyr)
 options(scipen=999)
+
+## All data is is in data directory on git
 setwd("/Users/yellapav/SV_project/data/")
+
+#Set sample name 
+sample="MMRF_1550_1_BM"
+
+
 ##################################################
 ######        Create bins              ###########
 ##################################################
@@ -92,26 +99,14 @@ gr.sv1 = GRanges(seqnames=Rle(as.character(sv.bed$chrom1)), IRanges(sv.bed$pos1,
 overlapGenes <- findOverlaps(gr.bins, gr.sv1)
 df.sv = data.frame(sv.bed[subjectHits(overlapGenes),], bins.df[queryHits(overlapGenes),])
 
-#write.table(df.sv,file="~/Desktop/SV_paper/sv_cyto_10kb.txt", append=FALSE, sep="\t", eol="\n", row.names=F, col.names=TRUE,quote=F)
-
-
-
-#sv.binned = data.frame(chrom=character(), 
-#                       pos=numeric(), 
-#                       bin.num=character(),
-#                       sample=character(), 
-#                       stringsAsFactors=FALSE)
 
 
 ######### Prepare CNV ###########
-sample="MMRF_1550_1_BM"
+## Read in CNV file and overlap with 10kb bins so that the bar plots render well
 mb.lim=as.numeric(as.character(1000000))
 cnv = read.table("commpass_cnv_new_fm6.txt",sep="\t",header=T,quote='~')
 cnv.n = cnv %>% dplyr::mutate(num.markers=1000) %>% dplyr::select("IDA","seqnames","startA","endA","major") %>% 
   dplyr::rename(ID=IDA, chr=seqnames,start=startA, end=endA,seg.mean=major) %>% dplyr::filter(ID==sample) #%>% dplyr::filter(seg.mean!="2") #%>% dplyr::filter(chr==8)
-
-
-
 
 
 gr.bins = GRanges(seqnames=Rle(bins.df$chrom), IRanges(bins.df$start, bins.df$stop), bin.num=bins.df$bin.num)
@@ -120,18 +115,16 @@ gr.sv = GRanges(seqnames=Rle(as.character(cnv.n$chr)), IRanges(cnv.n$start, cnv.
 overlapGenes <- findOverlaps(gr.bins, gr.sv)
 df = data.frame(cnv.n[subjectHits(overlapGenes),], bins.df[queryHits(overlapGenes),])
 
-head(del.df)
 
-head(bins.df)
-bins.df_test<- bins.df[bins.df$start > 9000000 &bins.df$stop< 15000000 & bins.df$chrom==16,]
-del.df_test<- del.df[del.df$start.1 > 9000000 &del.df$stop< 15000000 & del.df$chrom==16,]
-head(del.df_test)
-kk<- as.data.frame(table(del.df_test$bin.num))
-colnames(kk)[1]<-"bin.num"
-require(plyr)
-int<- join(bins.df_test, kk, by="bin.num")
-int$Freq[is.na(int$Freq)]<-0
-plot(int$Freq, type="l")
+#bins.df_test<- bins.df[bins.df$start > 9000000 & bins.df$stop< 15000000 & bins.df$chrom==16,]
+#del.df_test<- del.df[del.df$start.1 > 9000000 & del.df$stop< 15000000 & del.df$chrom==16,]
+#head(del.df_test)
+#kk<- as.data.frame(table(del.df_test$bin.num))
+#colnames(kk)[1]<-"bin.num"
+#require(plyr)
+#int<- join(bins.df_test, kk, by="bin.num")
+#int$Freq[is.na(int$Freq)]<-0
+#plot(int$Freq, type="l")
 
 ###### read hotspots ###############################################
 h.spots = read.table("manual.hotspots.txt",header=TRUE,sep="\t")
@@ -147,18 +140,10 @@ plot.end = 131113499
 enhancers = read.table("Merged.MM.primary.K27ac.remove2.5k.bed",sep="\t")
 en.myc = enhancers  %>% dplyr::mutate(start=as.numeric(as.character(V2)), end=as.numeric(as.character(V3))) ## %>% dplyr::filter(V1=="chr8" & start>126806779 & end<131113499)
 gr.myc = GRanges(seqnames=Rle(en.myc$V1), IRanges(en.myc$start, en.myc$end))
-head(enhancers)
-
-#################
-####### Promoter
-#################
-promoters = read.table("promoter_track.txt",sep="\t",header=T,quote='~')
-promoters = promoters[grep("promoter",promoters$Annotation),] %>% dplyr::mutate(start=as.numeric(as.character(start)), end=as.numeric(as.character(end))) #%>% dplyr::filter(chr=="chr8" & start>126806779 & end<131113499)
-head(promoters)
-pr.gr = GRanges(seqnames=Rle(promoters$chr), IRanges(promoters$start, promoters$end))
 
 
-#SVs
+
+#SVs Track is not relavent unless things change
 
 df.sv.hs.tally = (df.sv) %>% dplyr::group_by(bin.num) %>% tally() %>% data.frame()  %>% left_join(bins.df, by =c('bin.num' = 'bin.num')) %>% dplyr::mutate(start=as.numeric(as.character(start)), end=as.numeric(as.character(stop))) 
 df.sv.hs.tally$chrom=paste0("chr",df.sv.hs.tally$chrom)
@@ -168,70 +153,34 @@ dTrack <- DataTrack(gr, name="SV Breakpoints / Bin",background.title="darkblue",
 #################
 ####### CNV #####
 #################
-
-
-#cnv.sub=cnv.n  %>% mutate(chr=paste0("chr",cnv.n$chr)) %>% filter(ID=="MMRF_1550_1_BM")
-#cnv.sub = read.table("~/cnv",sep=" ",header=F)
-#colnames(cnv.sub)=c("chr","start","end","seg.mean")
 cnv.gr = GRanges(seqnames=Rle(paste0("chr",df$chrom)), IRanges(df$start.1, df$stop), Del=df$seg.mean)
 cnvTrack <- DataTrack(cnv.gr, name="CNV",type=c("s"),background.title="darkblue",ylim=c(0, 4))
-
-
-
 
 
 #################
 ######## ENSEMBL
 #################
 
-genes = read.table("~/Desktop/SV_paper/data/genes.txt",header=F,sep="\t")
+#List of genes in a single column format
 genes = read.table("genes1.txt",header=F,sep="\t")
 genes.vec = as.vector(genes$V1)
-#biomTrack <- BiomartGeneRegionTrack(genome = "hg19", name = "ENSEMBL", filters=list(hgnc_symbol=c("MYC","PVT1","PCAT1","ASAP1"),transcript_source="havana"),stacking="squish",background.title="darkblue",transcriptAnnotation="symbol")
+
 biomTrack <- BiomartGeneRegionTrack(genome = "hg19", name = "ENSEMBL", filters=list(hgnc_symbol=genes.vec,transcript_source="havana"),stacking="squish",background.title="darkblue",transcriptAnnotation="symbol")
 
-
-#chr <- as.character(unique(seqnames(plot.chr)))
-#gen <- genome(gr.myc)
 atrack <- AnnotationTrack(gr.myc, name="Enhancers",background.title="darkblue",fill="#6836A5",stacking="dense")
 ptrack <- AnnotationTrack(pr.gr, name="Promoter",background.title="darkblue",fill="#21AABD",stacking="dense")
 
 gtrack <- GenomeAxisTrack(transcriptAnnotation="symbol")
 
-####### GISTIC ########
-gistic = read.table("all_lesions.conf_90.txt",header=T,sep="\t")
-gistic = gistic[,c(4,7)]
-
-x=data.frame(matrix(unlist(strsplit(gsub("-",":",as.character(gistic$Peak.Limits)),"[:,-,(]")),byrow=T,ncol=5))
-gistic=cbind(gistic,x)
-gistic = (gistic) %>% dplyr::select(2:5) %>% dplyr::mutate(X1=as.character(X1),X2=as.numeric(as.character(X2)),X3=as.numeric(as.character(X3)),neg.log.q=-log(Residual.q.values.after.removing.segments.shared.with.higher.peaks))
-
-bins.df.chr = bins.df %>% dplyr::mutate(chrom=paste0("chr",chrom))
-gr.bins.chr = GRanges(seqnames=Rle(bins.df.chr$chrom), IRanges(bins.df.chr$start, bins.df.chr$stop))
-gistic.gr = GRanges(seqnames=Rle(gistic$X1), IRanges(gistic$X2, gistic$X3), Del=gistic$neg.log.q)
-overlapGenes <- findOverlaps(gr.bins.chr, gistic.gr)
-gistic.new = data.frame(gistic[subjectHits(overlapGenes),], bins.df.chr[queryHits(overlapGenes),])
-gistic.new=unique(gistic.new)
 
 
-
-
-
-gistic.gr = GRanges(seqnames=Rle(gistic.new$chrom), IRanges(gistic.new$start, gistic.new$stop), Del=gistic.new$neg.log.q)
-gistic.gr = GRanges(seqnames=Rle(gistic.new$chrom), IRanges(gistic.new$start, gistic.new$stop))
-#gisticTrack <- DataTrack(gistic.gr, name="GISTIC Peak Limits",background.title="darkblue",type=c("s"))
-gistrack <- AnnotationTrack(gistic.gr, name="GISTIC Boundary",background.title="darkblue",fill="#240046",stacking="dense")
-head(gistic)
-
-
+#### Read in Templated insertios and subset sample
 ti = read.table("~/Downloads/templated_insertions_all.txt",sep="\t",header=T) 
-
 ti = ti %>% dplyr::filter(sample=="MMRF_1550_1_BM")
 
-pdf("ti3.pdf", useDingbats=FALSE)
 
 
-dev.off()
+# For 3 seperate figures
 itrack <- IdeogramTrack(genome="hg19", chromosome="chr15")
 pdf("ti_m1550_chr15.pdf", useDingbats=FALSE)
 (plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr15", from=75268415, to=75559663))
@@ -244,6 +193,53 @@ dev.off()
 pdf("ti_m1550_chr15.pdf", useDingbats=FALSE)
 (plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr8", from=128190384, to=130290200,panel.only = TRUE))
 dev.off()
+
+
+
+## Arrange the 3 plots as columns
+grid.newpage()
+pushViewport(viewport(layout=grid.layout(1, 3)))
+pushViewport(viewport(layout.pos.col=3,layout.pos.row=1))
+plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr15", from=75268415, to=75559663, add=TRUE, showId=FALSE,panel.only = TRUE)
+popViewport()
+
+pushViewport(viewport(layout.pos.col=2,layout.pos.row=1))
+plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr22", from=23135181, to=23435198, add=TRUE, showId=FALSE,panel.only = TRUE)
+popViewport()
+
+pushViewport(viewport(layout.pos.col=1,layout.pos.row=1))
+plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr8", from=129090384, to=129590200, add=TRUE, showId=FALSE)
+popViewport()
+popViewport()
+
+
+
+## Arrange the threee plots as rows
+### This looks nice!
+
+pdf("ti_m1550.pdf", useDingbats=FALSE)
+grid.newpage()
+pushViewport(viewport(layout=grid.layout(3, 1)))
+pushViewport(viewport(layout.pos.col=1,layout.pos.row=3))
+plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr15", from=75268415, to=75559663, add=TRUE, showId=FALSE)
+popViewport()
+
+pushViewport(viewport(layout.pos.col=1,layout.pos.row=2))
+plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr22", from=23135181, to=23435198, add=TRUE, showId=FALSE)
+popViewport()
+
+pushViewport(viewport(layout.pos.col=1,layout.pos.row=1))
+plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr8", from=129090384, to=129590200, add=TRUE, showId=FALSE)
+popViewport()
+popViewport()
+
+
+dev.off()
+
+
+
+
+## Experimental ignore
 
 chroms=c("chr8","chr15","chr22")
 starts=c("128190384","75268415","23135181")
@@ -265,36 +261,10 @@ xyplot(1~chromosome|chromosome, data=chroms, panel=function(x){ plotTracks(list(
 
 #xyplot(1~chromosome|chromosome, data=chroms,
 
-grid.newpage()
-pushViewport(viewport(layout=grid.layout(1, 3)))
-pushViewport(viewport(layout.pos.col=3,layout.pos.row=1))
-plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr15", from=75268415, to=75559663, add=TRUE, showId=FALSE,panel.only = TRUE)
-popViewport()
 
-pushViewport(viewport(layout.pos.col=2,layout.pos.row=1))
-plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr22", from=23135181, to=23435198, add=TRUE, showId=FALSE,panel.only = TRUE)
-popViewport()
-
-pushViewport(viewport(layout.pos.col=1,layout.pos.row=1))
-plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr8", from=129090384, to=129590200, add=TRUE, showId=FALSE)
-popViewport()
-popViewport()
+itrack <- IdeogramTrack(genome="hg19", chromosome="chr15")
+gistrack <- AnnotationTrack(gistic.gr, name="GISTIC Boundar",background.title="darkblue",fill="#240046",stacking="dense",width=5,rotation.group=45)
+plotTracks(list(cnvTrack,cnvTrack,atrack,biomTrack, gistrack, gtrack,itrack),collapseTranscripts="longest",col = NULL, chromosome="chr15", from=75268415, to=75559663, add=TRUE, showId=FALSE, sizes=c(5,1.75,5,5,1,5,2))
 
 
 
-
-### This looks nice!
-grid.newpage()
-pushViewport(viewport(layout=grid.layout(3, 1)))
-pushViewport(viewport(layout.pos.col=1,layout.pos.row=3))
-plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr15", from=75268415, to=75559663, add=TRUE, showId=FALSE)
-popViewport()
-
-pushViewport(viewport(layout.pos.col=1,layout.pos.row=2))
-plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr22", from=23135181, to=23435198, add=TRUE, showId=FALSE)
-popViewport()
-
-pushViewport(viewport(layout.pos.col=1,layout.pos.row=1))
-plotTracks(list(cnvTrack,atrack,biomTrack, gtrack),collapseTranscripts="longest",col = NULL, chromosome="chr8", from=129090384, to=129590200, add=TRUE, showId=FALSE)
-popViewport()
-popViewport()
